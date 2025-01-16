@@ -5,6 +5,7 @@ enum PatternToken {
     Char(u8),
     Digit,
     Word,
+    Group(Vec<u8>),
 }
 
 #[derive(Debug, Clone)]
@@ -23,6 +24,16 @@ impl<'a> Pattern<'a> {
                 }
                 b'\\' if chars.next_if(|&v| *v == b'w').is_some() => {
                     tokens.push(PatternToken::Word);
+                }
+                b'[' => {
+                    let mut vals = Vec::<u8>::new();
+                    while let Some(v) = chars.next() {
+                        match *v {
+                            b']' => break,
+                            c => vals.push(c),
+                        }
+                    }
+                    tokens.push(PatternToken::Group(vals));
                 }
                 v => {
                     tokens.push(PatternToken::Char(*v));
@@ -70,6 +81,18 @@ impl<'a> Pattern<'a> {
                         return false;
                     }
                     if !matches!(*next.unwrap(), b'a'..=b'z'| b'A'..=b'Z' | b'0'..=b'9') {
+                        return false;
+                    }
+                }
+                PatternToken::Group(v) => {
+                    if v.is_empty() {
+                        continue;
+                    }
+                    let next = chars.next();
+                    if next.is_none() {
+                        return false;
+                    }
+                    if !v.contains(next.unwrap()) {
                         return false;
                     }
                 }
