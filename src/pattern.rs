@@ -13,6 +13,7 @@ enum PatternToken {
 pub struct Pattern<'a> {
     tokens: Cow<'a, [PatternToken]>,
     start: bool,
+    end: bool,
 }
 
 impl<'a> Pattern<'a> {
@@ -20,6 +21,7 @@ impl<'a> Pattern<'a> {
         let mut chars = value.as_ref().as_bytes().iter().peekable();
         let mut tokens = Vec::new();
         let mut start = false;
+        let mut end = false;
         if chars.peek() == Some(&&b'^') {
             chars.next();
             start = true;
@@ -55,6 +57,9 @@ impl<'a> Pattern<'a> {
                         tokens.push(PatternToken::Group(vals));
                     }
                 }
+                b'$' if chars.peek().is_none() => {
+                    end = true;
+                }
                 v => {
                     tokens.push(PatternToken::Char(*v));
                 }
@@ -64,24 +69,25 @@ impl<'a> Pattern<'a> {
         Self {
             tokens: Cow::Owned(tokens),
             start,
+            end,
         }
     }
     pub fn test<T: AsRef<str>>(&self, value: T) -> bool {
         let value = value.as_ref().as_bytes();
         if self.start {
-            return Self::match_here(self.tokens.as_ref(), value);
+            return self.match_here(value);
         }
         let mut i = 0;
         while i < value.len() {
-            if Self::match_here(self.tokens.as_ref(), &value[i..]) {
+            if self.match_here(&value[i..]) {
                 return true;
             }
             i += 1;
         }
         false
     }
-    fn match_here(tokens: &[PatternToken], value: &[u8]) -> bool {
-        let mut tokens = tokens.iter();
+    fn match_here(&self, value: &[u8]) -> bool {
+        let mut tokens = self.tokens.iter();
         let mut chars = value.iter();
         while let Some(token) = tokens.next() {
             match token {
@@ -133,6 +139,9 @@ impl<'a> Pattern<'a> {
                     }
                 }
             }
+        }
+        if self.end && chars.next().is_some() {
+            return false;
         }
         true
     }
