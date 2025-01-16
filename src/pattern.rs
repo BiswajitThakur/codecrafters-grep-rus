@@ -4,6 +4,7 @@ use std::borrow::Cow;
 enum PatternToken {
     Char(u8),
     Digit,
+    Word,
 }
 
 #[derive(Debug, Clone)]
@@ -19,6 +20,9 @@ impl<'a> Pattern<'a> {
             match ch {
                 b'\\' if chars.next_if(|&v| *v == b'd').is_some() => {
                     tokens.push(PatternToken::Digit);
+                }
+                b'\\' if chars.next_if(|&v| *v == b'w').is_some() => {
+                    tokens.push(PatternToken::Word);
                 }
                 v => {
                     tokens.push(PatternToken::Char(*v));
@@ -57,6 +61,15 @@ impl<'a> Pattern<'a> {
                         return false;
                     }
                     if !matches!(*next.unwrap(), b'0'..=b'9') {
+                        return false;
+                    }
+                }
+                PatternToken::Word => {
+                    let next = chars.next();
+                    if next.is_none() {
+                        return false;
+                    }
+                    if !matches!(*next.unwrap(), b'a'..=b'z'| b'A'..=b'Z' | b'0'..=b'9') {
                         return false;
                     }
                 }
