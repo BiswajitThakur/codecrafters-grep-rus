@@ -6,6 +6,7 @@ enum PatternToken {
     Digit,
     Word,
     Group(Vec<u8>),
+    NegGroup(Vec<u8>),
 }
 
 #[derive(Debug, Clone)]
@@ -27,13 +28,26 @@ impl<'a> Pattern<'a> {
                 }
                 b'[' => {
                     let mut vals = Vec::<u8>::new();
+                    let mut is_neg_group = false;
+                    if let Some(v) = chars.next() {
+                        if *v == b'^' {
+                            is_neg_group = true;
+                        } else {
+                            vals.push(*v);
+                        }
+                    }
                     while let Some(v) = chars.next() {
                         match *v {
                             b']' => break,
                             c => vals.push(c),
                         }
                     }
-                    tokens.push(PatternToken::Group(vals));
+                    vals.shrink_to_fit();
+                    if is_neg_group {
+                        tokens.push(PatternToken::NegGroup(vals));
+                    } else {
+                        tokens.push(PatternToken::Group(vals));
+                    }
                 }
                 v => {
                     tokens.push(PatternToken::Char(*v));
@@ -93,6 +107,18 @@ impl<'a> Pattern<'a> {
                         return false;
                     }
                     if !v.contains(next.unwrap()) {
+                        return false;
+                    }
+                }
+                PatternToken::NegGroup(v) => {
+                    if v.is_empty() {
+                        continue;
+                    }
+                    let next = chars.next();
+                    if next.is_none() {
+                        return false;
+                    }
+                    if v.contains(next.unwrap()) {
                         return false;
                     }
                 }
