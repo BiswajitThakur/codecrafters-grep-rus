@@ -2,13 +2,7 @@ use std::env;
 use std::io;
 use std::process;
 
-fn match_pattern(input_line: &str, pattern: &str) -> bool {
-    if pattern.chars().count() == 1 {
-        return input_line.contains(pattern);
-    } else {
-        panic!("Unhandled pattern: {}", pattern)
-    }
-}
+use codecrafters_grep::Pattern;
 
 // Usage: echo <input_text> | your_program.sh -E <pattern>
 fn main() {
@@ -21,8 +15,8 @@ fn main() {
     let mut input_line = String::new();
 
     io::stdin().read_line(&mut input_line).unwrap();
-
-    if match_pattern(&input_line, &pattern) {
+    let pattern = Pattern::compile(pattern);
+    if pattern.test(input_line) {
         process::exit(0)
     } else {
         process::exit(1)
