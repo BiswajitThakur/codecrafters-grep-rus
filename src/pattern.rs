@@ -12,12 +12,18 @@ enum PatternToken {
 #[derive(Debug, Clone)]
 pub struct Pattern<'a> {
     tokens: Cow<'a, [PatternToken]>,
+    start: bool,
 }
 
 impl<'a> Pattern<'a> {
     pub fn compile<T: AsRef<str>>(value: T) -> Self {
         let mut chars = value.as_ref().as_bytes().iter().peekable();
         let mut tokens = Vec::new();
+        let mut start = false;
+        if chars.peek() == Some(&&b'^') {
+            chars.next();
+            start = true;
+        }
         while let Some(ch) = chars.next() {
             match ch {
                 b'\\' if chars.next_if(|&v| *v == b'd').is_some() => {
@@ -57,10 +63,14 @@ impl<'a> Pattern<'a> {
         tokens.shrink_to_fit();
         Self {
             tokens: Cow::Owned(tokens),
+            start,
         }
     }
     pub fn test<T: AsRef<str>>(&self, value: T) -> bool {
         let value = value.as_ref().as_bytes();
+        if self.start {
+            return Self::match_here(self.tokens.as_ref(), value);
+        }
         let mut i = 0;
         while i < value.len() {
             if Self::match_here(self.tokens.as_ref(), &value[i..]) {
